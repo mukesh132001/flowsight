@@ -48,8 +48,16 @@ def run_parity(settings, log=print) -> bool:
     res = run_pipeline(lite, raw, settings.months, log=quiet)
     log("[parity] building with Spark ...")
     spark = SparkEngine(tmp / "spark")
-    run_pipeline(spark, raw, settings.months, log=quiet)
+    res_spark = run_pipeline(spark, raw, settings.months, log=quiet)
     ok = True
+    # bronze first: every raw feed must land with the same row count (a feed Spark silently
+    # skipped would otherwise only show up as checks that pass for the wrong reason)
+    spark_rows = dict(zip(res_spark.load_audit.feed, res_spark.load_audit.rows_loaded))
+    for feed, table, n in zip(res.load_audit.feed, res.load_audit.table_name, res.load_audit.rows_loaded):
+        m = spark_rows.get(feed)
+        same = m is not None and int(m) == int(n)
+        ok &= same
+        log(f"  {'OK  ' if same else 'DIFF'} {table:36s} {int(n):>9,} rows" + ("" if same else f"  vs {m} on Spark"))
     for model in list(res.model_runs.model) + ["dq_results"]:
         a, b = lite.table(model), spark.table(model)
         issues = compare_tables(a, b)

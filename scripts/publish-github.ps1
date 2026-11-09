@@ -8,7 +8,7 @@
 # Run in PowerShell from this folder (Documents\barclays-projects\flowsight):
 #   powershell -ExecutionPolicy Bypass -File scripts\publish-github.ps1
 # Safe to re-run: it pushes new commits and skips anything that already exists.
-param([string]$RepoName = "flowsight")
+param([string]$RepoName = "flowsight", [string]$Message = "")
 $ErrorActionPreference = "Stop"
 Set-Location (Split-Path $PSScriptRoot -Parent)          # always work from the repo root
 
@@ -96,8 +96,23 @@ if (-not (git config user.email)) {
 if (-not (git config user.name)) { git config user.name ((gh api user --jq '.name // .login').Trim()) }
 Invoke-Native { git add -A } | Out-Null
 if (git status --porcelain) {
-    Invoke-Native { git commit -q -m "FlowSight: distribution intelligence for an asset manager" } | Out-Null
+    # message: -Message, else .commit-msg (git-ignored, removed after use), else a summary of what changed
+    if ($Message) {
+        Invoke-Native { git commit -q -m $Message } | Out-Null
+    } elseif (Test-Path ".commit-msg") {
+        Invoke-Native { git commit -q -F ".commit-msg" } | Out-Null
+    } elseif (-not (Invoke-Native { git rev-parse --verify -q HEAD *> $null } -AllowFail)) {
+        Invoke-Native { git commit -q -m "FlowSight: distribution intelligence for an asset manager" } | Out-Null
+    } else {
+        $areas = @(git diff --cached --name-only | ForEach-Object {
+            $p = $_ -split "/"
+            if ($p[0] -eq ".github") { "CI" } elseif ($p[0] -eq "src" -and $p.Count -gt 2) { $p[2] -replace "\.py$", "" }
+            elseif ($p.Count -gt 1) { $p[0] } else { $_ }
+        } | Select-Object -Unique)
+        Invoke-Native { git commit -q -m ("Update " + ($areas -join ", ")) } | Out-Null
+    }
 }
+if (Test-Path ".commit-msg") { Remove-Item ".commit-msg" -Force }
 
 # Create the repo (or push to it if it already exists)
 $desc = "Asset-management distribution analytics: PySpark/SQL pipeline, KPI framework, next-best-action ML, GenAI call-prep briefs, Excel/PowerPoint/Tableau outputs"

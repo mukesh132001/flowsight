@@ -46,6 +46,8 @@ def write_feeds(sim: dict, raw_dir: Path, truth_dir: Path, seed: int = 42) -> di
     raw_dir, truth_dir = Path(raw_dir), Path(truth_dir)
     raw_dir.mkdir(parents=True, exist_ok=True)
     truth_dir.mkdir(parents=True, exist_ok=True)
+    for stale in raw_dir.glob("*.csv"):       # raw/ holds simulator output only: no ghost feeds from old runs
+        stale.unlink()
     w = sim["world"]
     months, prod, firms, adv, wh = w.months, w.products, w.firms, w.advisors, w.wholesalers
     T, P = len(months), len(prod)
@@ -309,7 +311,8 @@ def write_feeds(sim: dict, raw_dir: Path, truth_dir: Path, seed: int = 42) -> di
            {"feed": "crm_activities.csv", "row_count": len(crm), "amount_total": 0.0},
            {"feed": "positions_monthly.csv", "row_count": counts["positions_monthly.csv"],
             "amount_total": round(pos.market_value.round(2).sum(), 2)}]
-    out("_control_totals.csv", pd.DataFrame(ctl))
+    # no leading "_" in the name: Spark treats _x and .x files as metadata and silently skips them
+    out("control_totals.csv", pd.DataFrame(ctl))
 
     # ---------------- ground truth (never read by the pipeline) ----------------
     lat = w.latent.copy()

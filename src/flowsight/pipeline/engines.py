@@ -107,6 +107,9 @@ class SparkEngine:
         from pyspark.sql import functions as F
         from pyspark.sql.types import StringType, StructField, StructType
 
+        if path.name.startswith(("_", ".")):
+            # Spark's file index skips these names ("All paths were ignored") and returns no rows
+            raise ValueError(f"{path.name}: Spark ignores files starting with '_' or '.' - rename the feed")
         header = pd.read_csv(path, nrows=0).columns.tolist()
         schema = StructType([StructField(c, StringType(), True) for c in header]
                             + [StructField("_corrupt_record", StringType(), True)])

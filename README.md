@@ -55,7 +55,7 @@ every table on both engines and compares them.
 | Simulated A/B test | **$121.7M** incremental gross sales from 570 meetings vs **$104.4M** for the best simple rule (+17%) and **$47.6M** for actual coverage; a plain "likely to buy" list scored -2% vs the rule |
 | Redemption early warning | AUC **0.700** vs 0.618 for a rule; top decile redeems at 3.2x the average rate; watchlist of 293 advisors with $493M AUM at risk |
 | GenAI | 32 call-prep briefs and the monthly commentary, 100% passing compliance + number-grounding guardrails; runs offline without an API key |
-| Quality | 39 tests (data quality, leakage, guardrails, reports) on every push; Spark parity job in CI |
+| Quality | 40 tests (data quality, leakage, guardrails, reports) on every push; Spark parity job in CI |
 
 ![Next best action](docs/img/next-best-action.png)
 
@@ -99,7 +99,7 @@ $env:PYTHONPATH = "src"                 # Windows PowerShell (export PYTHONPATH=
 
 python -m flowsight run                 # generate data and build everything (about 2 minutes)
 start outputs\dashboard\index.html      # open the dashboard
-pytest                                  # 39 tests, small scale
+pytest                                  # 40 tests, small scale
 ```
 
 Individual steps: `generate`, `pipeline`, `kpis`, `ml`, `ai`, `reports`, `docs`. Use `--scale small` for a

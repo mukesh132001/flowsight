@@ -15,6 +15,7 @@ derby.log
 
 # Secrets / IDE / OS
 .env
+.commit-msg
 .idea/
 .vscode/
 .DS_Store

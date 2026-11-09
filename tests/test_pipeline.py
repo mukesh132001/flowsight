@@ -89,3 +89,19 @@ def test_a_bad_row_blocks_the_refresh(built, tmp_path):
     assert dq.loc["trades_have_firm", "status"] == "FAIL"
     assert dq.loc["load_matches_control_rows", "status"] == "FAIL"     # sender said fewer rows
     eng.close()
+
+
+def test_an_empty_control_file_fails_instead_of_passing(built, tmp_path):
+    """What Spark did with `_control_totals.csv` (skipped it): no control rows at all. The control checks
+    must go red rather than pass against an empty table."""
+    raw = tmp_path / "raw"
+    shutil.copytree(built.settings.path("raw"), raw)
+    ctl = pd.read_csv(raw / "control_totals.csv", dtype=str)
+    ctl.iloc[0:0].to_csv(raw / "control_totals.csv", index=False)       # header only
+    eng = SQLiteEngine(tmp_path / "w.db", fresh=True)
+    res = run_pipeline(eng, raw, built.settings.months, log=lambda *a: None)
+    dq = res.dq_results.set_index("check_name")
+    assert not res.passed
+    assert dq.loc["load_matches_control_rows", "status"] == "FAIL"
+    assert dq.loc["vendor_a_amount_matches_control", "status"] == "FAIL"
+    eng.close()

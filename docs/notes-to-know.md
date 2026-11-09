@@ -150,12 +150,18 @@ randomised pilot, because the simulation can't be reproduced on real data."
   `.github/workflows` needs the extra **workflow** scope, because workflows can run code with repo access -
   GitHub makes you opt in to that power explicitly.
 * **CI (continuous integration).** Every push runs `.github/workflows/ci.yml` on a fresh Linux machine: the
-  39 tests on SQLite, and a second job that builds every table on **Spark** and compares it with SQLite. A
+  40 tests on SQLite, and a second job that builds every table on **Spark** and compares it with SQLite. A
   green tick on the commit means "a stranger can rebuild this from scratch" - the strongest proof in a repo.
 * **GitHub Pages.** Hosts static files (the dashboard in `site/`) at `<user>.github.io/<repo>`. The Pages
   workflow uploads the folder as an artifact and deploys it; nothing runs server-side.
 * **Issues as a backlog.** The sprint stories live as labelled issues - the same artefact a product owner
   would groom in Jira, and something a reviewer can click through.
+* **What CI caught on day one.** The first run was green, but its Spark log said *"All paths were ignored:
+  _control_totals.csv"*. Spark treats files starting with `_` or `.` as metadata and skips them, so on Spark
+  the two control-total checks were passing against an empty table. Fixes: rename the feed, make the Spark
+  loader fail loudly on such names, make check 06 fail when the control file is empty or a feed is missing,
+  and have the parity job compare rows loaded per feed. Lesson: a green check can be vacuous - read the
+  logs, and test that a check *can* fail.
 * **Interview line:** "It's public with CI on two engines, a live dashboard and the backlog as issues - you
   can see how I work, not just the result."
 

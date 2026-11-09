@@ -15,7 +15,7 @@ def test_raw_feeds_exist(built):
                 "advisor_master.csv", "rep_code_xref.csv", "positions_monthly.csv", "web_engagement.csv",
                 "ta_fund_flows.csv", "fund_returns.csv", "industry_flows.csv", "inst_opportunities.csv",
                 "products.csv", "share_class_xref.csv", "firms.csv", "platform_shelf.csv", "territories.csv",
-                "wholesalers.csv", "sales_goals.csv", "_control_totals.csv"}
+                "wholesalers.csv", "sales_goals.csv", "control_totals.csv"}
     assert expected <= {p.name for p in raw.glob("*.csv")}
 
 
