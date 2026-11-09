@@ -1,0 +1,6 @@
+# GitHub language stats: site/ is the generated dashboard (data embedded in the page) and the
+# dictionaries are generated from config; the SQL models are core code but SQL is not counted by default.
+site/** linguist-generated=true
+docs/kpi-dictionary.md linguist-generated=true
+docs/data-dictionary.md linguist-generated=true
+*.sql linguist-detectable=true
