@@ -1,0 +1,689 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FlowSight Distribution Dashboard</title>
+<meta name="description" content="Distribution analytics for a fictional asset manager: flows, KPIs, sales productivity, next-best-action call lists and data health. Synthetic data.">
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7; --surface: #fcfcfb; --surface-2: #f3f3f0; --border: rgba(11,11,11,0.10);
+  --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781; --grid: #e1e0d9; --axis: #c3c2b7;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --neg: #e34948; --deemph: #c3c2b7;
+  --div-mid: #f0efec; --accent: #2a78d6; --accent-ink: #184f95;
+  --good: #0ca30c; --good-bg: #dcf3dc; --good-ink: #006300;
+  --warn: #fab219; --warn-bg: #fff1cc; --warn-ink: #7a4f00;
+  --bad: #d03b3b; --bad-bg: #f9dcdc; --bad-ink: #a32424;
+  --info-bg: #f0efec; --info-ink: #52514e;
+  --shadow: 0 1px 2px rgba(11,11,11,0.04);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --surface-2: #232321; --border: rgba(255,255,255,0.10);
+    --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781; --grid: #2c2c2a; --axis: #383835;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --neg: #e66767; --deemph: #4a4a46;
+    --div-mid: #383835; --accent: #3987e5; --accent-ink: #9ec5f4;
+    --good-bg: #12301a; --good-ink: #7fd67f; --warn-bg: #3a2c08; --warn-ink: #f5c95c;
+    --bad-bg: #3a1616; --bad-ink: #f19a99; --info-bg: #2c2c2a; --info-ink: #c3c2b7;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d; --surface: #1a1a19; --surface-2: #232321; --border: rgba(255,255,255,0.10);
+  --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781; --grid: #2c2c2a; --axis: #383835;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --neg: #e66767; --deemph: #4a4a46;
+  --div-mid: #383835; --accent: #3987e5; --accent-ink: #9ec5f4;
+  --good-bg: #12301a; --good-ink: #7fd67f; --warn-bg: #3a2c08; --warn-ink: #f5c95c;
+  --bad-bg: #3a1616; --bad-ink: #f19a99; --info-bg: #2c2c2a; --info-ink: #c3c2b7;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+header { background: var(--surface); border-bottom: 1px solid var(--border); }
+.wrap { max-width: 1280px; margin: 0 auto; padding: 0 16px; }
+.top { display: flex; align-items: center; gap: 16px; padding: 14px 0 10px; flex-wrap: wrap; }
+.brand { font-weight: 700; font-size: 18px; letter-spacing: -0.01em; }
+.brand span { color: var(--accent); }
+.meta { color: var(--ink-2); font-size: 13px; }
+.spacer { flex: 1; }
+button.theme { border: 1px solid var(--border); background: var(--surface-2); color: var(--ink); border-radius: 8px;
+  padding: 6px 10px; cursor: pointer; font: inherit; font-size: 12px; }
+nav.tabs { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+nav.tabs button { border: 0; background: none; color: var(--ink-2); font: inherit; font-weight: 600; padding: 10px 12px;
+  border-bottom: 2px solid transparent; cursor: pointer; white-space: nowrap; }
+nav.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+main { padding: 20px 0 48px; }
+section.tab { display: none; }
+section.tab.active { display: block; }
+.grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px;
+  box-shadow: var(--shadow); min-width: 0; }
+.c12 { grid-column: span 12; } .c8 { grid-column: span 8; } .c7 { grid-column: span 7; } .c6 { grid-column: span 6; }
+.c5 { grid-column: span 5; } .c4 { grid-column: span 4; } .c3 { grid-column: span 3; } .c2 { grid-column: span 2; }
+@media (max-width: 980px) { .c8, .c7, .c6, .c5, .c4 { grid-column: span 12; } .c3, .c2 { grid-column: span 6; } }
+@media (max-width: 560px) { .c3, .c2 { grid-column: span 12; } }
+.card h2 { font-size: 15px; margin: 0 0 2px; }
+.card .sub { color: var(--ink-2); font-size: 12px; margin: 0 0 12px; }
+.card-head { display: flex; align-items: flex-start; gap: 8px; }
+.card-head > div { flex: 1; min-width: 0; }
+.toggle { border: 1px solid var(--border); background: var(--surface-2); color: var(--ink-2); border-radius: 6px;
+  font: inherit; font-size: 11px; padding: 3px 8px; cursor: pointer; }
+.tile { display: flex; flex-direction: column; min-height: 168px; }
+#tiles { align-items: stretch; }
+.tile .label { color: var(--ink-2); font-size: 12px; min-height: 18px; }
+.tile .value { font-size: 28px; font-weight: 650; letter-spacing: -0.01em; margin: 4px 0 6px; }
+.tile .status { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.tile .delta { font-size: 12px; color: var(--ink-2); margin-top: 6px; }
+.tile svg { margin-top: auto !important; padding-top: 8px; }
+.tile svg { display: block; margin-top: 8px; }
+.hero .value { font-size: 48px; }
+.chip { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; border-radius: 999px;
+  padding: 2px 8px; white-space: nowrap; }
+.chip.GREEN, .chip.PASS, .chip.FAVOURABLE { background: var(--good-bg); color: var(--good-ink); }
+.chip.AMBER, .chip.WARN { background: var(--warn-bg); color: var(--warn-ink); }
+.chip.RED, .chip.FAIL, .chip.ADVERSE { background: var(--bad-bg); color: var(--bad-ink); }
+.chip.INFO { background: var(--info-bg); color: var(--info-ink); }
+ul.bullets { margin: 0; padding-left: 18px; } ul.bullets li { margin: 0 0 8px; }
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+th { text-align: left; color: var(--ink-2); font-weight: 600; border-bottom: 1px solid var(--axis); padding: 6px 8px;
+  white-space: nowrap; position: sticky; top: 0; background: var(--surface); }
+th.sortable { cursor: pointer; }
+td { border-bottom: 1px solid var(--grid); padding: 6px 8px; vertical-align: top; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+tr.clickable { cursor: pointer; } tr.clickable:hover td { background: var(--surface-2); }
+tr.selected td { background: var(--surface-2); }
+.muted { color: var(--ink-2); } .small { font-size: 12px; }
+.chart { position: relative; width: 100%; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart text { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.chart .lbl { fill: var(--ink-2); }
+.chart .lbl-strong { fill: var(--ink); font-weight: 600; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--ink-2); margin: 0 0 8px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.legend i.line { height: 2px; width: 14px; border-radius: 1px; vertical-align: 3px; }
+.tip { position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 10px; font-size: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); z-index: 5;
+  min-width: 140px; opacity: 0; transition: opacity .08s; }
+.tip .tv { font-weight: 700; color: var(--ink); font-size: 13px; }
+.tip .tl { color: var(--ink-2); }
+.tip .row { display: flex; align-items: center; gap: 6px; }
+.tip .key { width: 12px; height: 2px; border-radius: 1px; display: inline-block; }
+.controls { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 0 0 16px; }
+select, input[type="search"] { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 6px 10px; }
+.brief { background: var(--surface-2); border-radius: 10px; padding: 14px 16px; font-size: 13px; }
+.brief h3 { font-size: 15px; margin: 0 0 4px; }
+.brief p { margin: 6px 0; } .brief ul { margin: 4px 0 8px; padding-left: 18px; }
+.brief hr { border: 0; border-top: 1px solid var(--border); margin: 10px 0; }
+.meter { height: 8px; border-radius: 999px; background: var(--div-mid); position: relative; min-width: 90px; }
+.meter > b { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; background: var(--s1); }
+.meter > u { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--ink-2); left: 66.6%; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 13px; }
+.kv b { font-weight: 650; font-variant-numeric: tabular-nums; }
+.note { font-size: 12px; color: var(--ink-2); margin-top: 10px; }
+footer { color: var(--muted); font-size: 12px; padding: 0 0 32px; }
+.heat td { text-align: center; padding: 5px 4px; font-size: 11.5px; border: 2px solid var(--surface); border-radius: 4px; }
+.heat td.name { text-align: left; color: var(--ink-2); white-space: nowrap; }
+.scale { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--ink-2); margin-top: 8px; }
+.scale .bar { flex: 0 0 160px; height: 8px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="top">
+      <div class="brand">Flow<span>Sight</span></div>
+      <div class="meta" id="meta"></div>
+      <div class="spacer"></div>
+      <button class="theme" id="themeBtn" type="button" aria-label="Toggle light or dark theme">Theme</button>
+    </div>
+    <nav class="tabs" role="tablist" id="tabs"></nav>
+  </div>
+</header>
+<main class="wrap" id="main">
+  <section class="tab" id="tab-overview" data-title="Overview">
+    <div class="grid" id="tiles"></div>
+    <div class="grid" style="margin-top:16px">
+      <div class="card c7"><div class="card-head"><div><h2>Net flows vs plan</h2><p class="sub">Monthly, all funds (transfer agent). Plan = 4% annual organic growth on beginning AUM.</p></div><button class="toggle" data-for="chart-netflows">Table</button></div><div id="chart-netflows"></div></div>
+      <div class="card c5"><h2>What happened</h2><p class="sub" id="commentary-sub"></p><ul class="bullets" id="commentary"></ul></div>
+      <div class="card c5"><div class="card-head"><div><h2>AUM bridge, year to date</h2><p class="sub">Ending AUM = beginning + gross sales - redemptions + market</p></div><button class="toggle" data-for="chart-bridge">Table</button></div><div id="chart-bridge"></div></div>
+      <div class="card c7"><h2>KPI scorecard</h2><p class="sub">Every KPI's definition, owner and rule lives in config/kpis.yaml</p><div class="tablewrap" id="scorecard"></div></div>
+    </div>
+  </section>
+  <section class="tab" id="tab-products" data-title="Products &amp; territories">
+    <div class="grid">
+      <div class="card c12"><h2>Net flows by territory</h2><p class="sub">Last 12 months, intermediary feeds. Unattributed = rep code not in the crosswalk.</p><div class="tablewrap" id="heatmap"></div></div>
+      <div class="card c6"><div class="card-head"><div><h2>Net flows by product family</h2><p class="sub">Year to date, transfer agent</p></div><button class="toggle" data-for="chart-families">Table</button></div><div id="chart-families"></div></div>
+      <div class="card c6"><div class="card-head"><div><h2>Net flows by channel</h2><p class="sub">Year to date, intermediary feeds</p></div><button class="toggle" data-for="chart-channels">Table</button></div><div id="chart-channels"></div></div>
+      <div class="card c12"><h2>Funds</h2><p class="sub">Last 12 months; excess return = fund minus category average over 3 months. Click a column to sort.</p><div class="tablewrap" id="funds"></div></div>
+    </div>
+  </section>
+  <section class="tab" id="tab-team" data-title="Sales team">
+    <div class="grid">
+      <div class="card c12"><h2>Wholesaler scorecard, quarter to date</h2><p class="sub" id="team-sub"></p><div class="tablewrap" id="team"></div></div>
+    </div>
+  </section>
+  <section class="tab" id="tab-nba" data-title="Next best action">
+    <div class="grid">
+      <div class="card c7"><div class="card-head"><div><h2>Which call list creates the most extra sales?</h2><p class="sub" id="policy-sub"></p></div><button class="toggle" data-for="chart-policy">Table</button></div><div id="chart-policy"></div></div>
+      <div class="card c5"><h2>How the ranking works</h2><p class="sub">value = (P(buy | meeting) - P(buy | no meeting)) x typical ticket</p><div id="effect"></div></div>
+      <div class="card c12">
+        <div class="controls"><label class="small muted" for="wsel">Wholesaler</label><select id="wsel"></select><span class="small muted" id="wsel-note"></span></div>
+        <div class="grid">
+          <div class="c7" style="min-width:0"><div class="tablewrap" id="calllist"></div></div>
+          <div class="c5" style="min-width:0"><div class="brief" id="brief"></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section class="tab" id="tab-retention" data-title="Retention">
+    <div class="grid">
+      <div class="card c4"><h2>Redemption early warning</h2><p class="sub">Who is likely to pull 25%+ of their assets with us in the next 3 months</p><div class="kv" id="att-metrics"></div><p class="note">Ranked by AUM at risk = probability x assets with us. Reasons come from the same features the model used.</p></div>
+      <div class="card c8"><h2>Watchlist</h2><p class="sub" id="watch-sub"></p><div class="tablewrap" id="watch"></div></div>
+    </div>
+  </section>
+  <section class="tab" id="tab-dq" data-title="Data health">
+    <div class="grid">
+      <div class="card c6"><div class="card-head"><div><h2>Unattributed sales</h2><p class="sub">Share of reported gross sales whose rep code is not in the crosswalk</p></div><button class="toggle" data-for="chart-unattr">Table</button></div><div id="chart-unattr"></div></div>
+      <div class="card c6"><h2>Alerts</h2><p class="sub">Robust z-score of each KPI vs its own trailing 12 months (|z| >= 3.5 and >= 25% move)</p><div class="tablewrap" id="alerts"></div></div>
+      <div class="card c12"><h2>Data-quality gate</h2><p class="sub">Runs on every refresh. An error-severity failure blocks the refresh so no report goes out on bad data.</p><div class="tablewrap" id="dq"></div></div>
+    </div>
+  </section>
+</main>
+<footer class="wrap">FlowSight portfolio project · Aurora Peak Investments is fictional and every number is synthetic · <span id="foot"></span></footer>
+<script id="flowsight-data" type="application/json">/*__DATA__*/</script>
+<script>
+(function () {
+  "use strict";
+  var D = JSON.parse(document.getElementById("flowsight-data").textContent);
+  var RAG = { GREEN: "✓ On track", AMBER: "▲ Watch", RED: "✕ Off track", INFO: "– Info",
+              PASS: "✓ Pass", WARN: "▲ Warn", FAIL: "✕ Fail", ADVERSE: "✕ Adverse", FAVOURABLE: "✓ Favourable" };
+  var NS = "http://www.w3.org/2000/svg";
+
+  // ------------------------------------------------------------ helpers
+  function el(tag, attrs, text) {
+    var e = document.createElement(tag);
+    if (attrs) for (var k in attrs) { if (k === "class") e.className = attrs[k]; else e.setAttribute(k, attrs[k]); }
+    if (text != null) e.textContent = text;
+    return e;
+  }
+  function svg(tag, attrs) { var e = document.createElementNS(NS, tag); for (var k in attrs) e.setAttribute(k, attrs[k]); return e; }
+  function css(v) { return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+  function money(x, signed) {
+    if (x == null || isNaN(x)) return "n/a";
+    var s = signed && x > 0 ? "+" : (x < 0 ? "-" : ""), a = Math.abs(x);
+    if (a >= 1e9) return s + "$" + (a / 1e9).toFixed(a >= 1e10 ? 1 : 2) + "B";
+    if (a >= 1e6) return s + "$" + (a / 1e6).toFixed(a >= 1e8 ? 0 : 1) + "M";
+    if (a >= 1e3) return s + "$" + (a / 1e3).toFixed(0) + "K";
+    return s + "$" + a.toFixed(0);
+  }
+  function tick(v) { return money(v).replace(/\.0([BMK])$/, "$1"); }
+  function pct(x, d, signed) { if (x == null || isNaN(x)) return "n/a"; var v = (x * 100).toFixed(d == null ? 1 : d);
+    return (signed && x > 0 ? "+" : "") + v + "%"; }
+  function num(x, d) { if (x == null || isNaN(x)) return "n/a"; return x.toLocaleString("en-US", { maximumFractionDigits: d == null ? 0 : d, minimumFractionDigits: d || 0 }); }
+  function fmt(x, unit, signed) { if (unit === "usd") return money(x, signed); if (unit === "pct") return pct(x, 1, signed);
+    if (unit === "ratio") return (signed && x > 0 ? "+" : "") + num(x, 2); return (signed && x > 0 ? "+" : "") + num(x, Math.abs(x) < 100 ? 1 : 0); }
+  function chip(status) { return el("span", { class: "chip " + status }, RAG[status] || status); }
+  function niceTicks(min, max, n) {
+    if (min === max) { max = min + 1; }
+    var span = max - min, step = Math.pow(10, Math.floor(Math.log10(span / n))), err = span / n / step;
+    if (err >= 7.5) step *= 10; else if (err >= 3.5) step *= 5; else if (err >= 1.5) step *= 2;
+    var lo = Math.floor(min / step) * step, hi = Math.ceil(max / step) * step, out = [];
+    for (var v = lo; v <= hi + step / 2; v += step) out.push(Math.round(v / step) * step);
+    return out;
+  }
+  function tipFor(container) {
+    var t = container.querySelector(".tip");
+    if (!t) { t = el("div", { class: "tip", role: "status" }); container.appendChild(t); }
+    return {
+      show: function (rows, x, y) {
+        t.textContent = "";
+        rows.forEach(function (r, i) {
+          var d = el("div", { class: "row" });
+          if (r.key) { var k = el("span", { class: "key" }); k.style.background = r.key; d.appendChild(k); }
+          d.appendChild(el("span", { class: i === 0 ? "tv" : "tl" }, r.text));
+          t.appendChild(d);
+        });
+        var w = container.clientWidth, tw = t.offsetWidth || 160;
+        t.style.left = Math.min(Math.max(0, x + 12), w - tw) + "px";
+        t.style.top = Math.max(0, y - 10) + "px";
+        t.style.opacity = 1;
+      },
+      hide: function () { t.style.opacity = 0; }
+    };
+  }
+  function makeTable(cols, rows, opts) {
+    opts = opts || {};
+    var wrap = el("div"), table = el("table"), thead = el("thead"), tbody = el("tbody"), sortCol = null, asc = false;
+    var hr = el("tr");
+    cols.forEach(function (c, i) {
+      var th = el("th", { class: (c.num ? "num " : "") + (opts.sortable ? "sortable" : "") }, c.label);
+      if (opts.sortable) th.addEventListener("click", function () { asc = sortCol === i ? !asc : false; sortCol = i; draw(); });
+      hr.appendChild(th);
+    });
+    thead.appendChild(hr); table.appendChild(thead); table.appendChild(tbody); wrap.appendChild(table);
+    function draw() {
+      tbody.textContent = "";
+      var data = rows.slice();
+      if (sortCol != null && cols[sortCol].sort) data.sort(function (a, b) { var x = cols[sortCol].sort(a), y = cols[sortCol].sort(b);
+        return (x > y ? 1 : x < y ? -1 : 0) * (asc ? 1 : -1); });
+      data.forEach(function (r) {
+        var tr = el("tr");
+        if (opts.onClick) { tr.className = "clickable"; tr.tabIndex = 0;
+          tr.addEventListener("click", function () { opts.onClick(r, tr); });
+          tr.addEventListener("keydown", function (e) { if (e.key === "Enter") opts.onClick(r, tr); }); }
+        cols.forEach(function (c) {
+          var td = el("td", { class: c.num ? "num" : "" }), v = c.render(r);
+          if (v instanceof Node) td.appendChild(v); else td.textContent = v == null ? "" : v;
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+    }
+    draw();
+    return wrap;
+  }
+  function withTable(id, cols, rows) {
+    var host = document.getElementById(id), btn = document.querySelector('[data-for="' + id + '"]');
+    var tableNode = makeTable(cols, rows); tableNode.style.display = "none"; tableNode.className = "tablewrap";
+    host.parentNode.appendChild(tableNode);
+    if (btn) btn.addEventListener("click", function () {
+      var showTable = tableNode.style.display === "none";
+      tableNode.style.display = showTable ? "" : "none"; host.style.display = showTable ? "none" : "";
+      btn.textContent = showTable ? "Chart" : "Table";
+    });
+  }
+
+  // ------------------------------------------------------------ charts
+  function sparkline(values, w, h) {
+    var s = svg("svg", { viewBox: "0 0 " + w + " " + h, width: w, height: h, "aria-hidden": "true" });
+    var v = values.filter(function (x) { return x != null; });
+    if (v.length < 2) return s;
+    var mn = Math.min.apply(null, v), mx = Math.max.apply(null, v), sp = (mx - mn) || 1;
+    var pts = v.map(function (x, i) { return [2 + i * (w - 6) / (v.length - 1), h - 3 - (x - mn) / sp * (h - 6)]; });
+    s.appendChild(svg("polyline", { points: pts.map(function (p) { return p.join(","); }).join(" "), fill: "none",
+      stroke: css("--deemph"), "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }));
+    var last = pts[pts.length - 1];
+    s.appendChild(svg("circle", { cx: last[0], cy: last[1], r: 4, fill: css("--s1"), stroke: css("--surface"), "stroke-width": 2 }));
+    return s;
+  }
+
+  function columnChart(id, labels, values, plan) {
+    var host = document.getElementById(id); host.textContent = ""; host.classList.add("chart");
+    var lg = el("div", { class: "legend" });
+    lg.innerHTML = "";
+    var a = el("span"); var ai = el("i"); ai.style.background = css("--s1"); a.appendChild(ai); a.appendChild(document.createTextNode("Net inflow"));
+    var b = el("span"); var bi = el("i"); bi.style.background = css("--neg"); b.appendChild(bi); b.appendChild(document.createTextNode("Net outflow"));
+    var c = el("span"); var ci = el("i", { class: "line" }); ci.style.background = css("--ink-2"); c.appendChild(ci); c.appendChild(document.createTextNode("Plan"));
+    lg.appendChild(a); lg.appendChild(b); lg.appendChild(c); host.appendChild(lg);
+    var W = Math.max(320, Math.round(host.clientWidth || 720)), H = W < 520 ? 240 : 300, m = { l: 56, r: 10, t: 10, b: 34 }, pw = W - m.l - m.r, ph = H - m.t - m.b;
+    var all = values.concat(plan.filter(function (x) { return x != null; })), ticks = niceTicks(Math.min(0, Math.min.apply(null, all)), Math.max.apply(null, all), 5);
+    var y0 = ticks[0], y1 = ticks[ticks.length - 1], y = function (v) { return m.t + ph - (v - y0) / (y1 - y0) * ph; };
+    var s = svg("svg", { viewBox: "0 0 " + W + " " + H, role: "img", "aria-label": "Net flows by month vs plan" });
+    ticks.forEach(function (t) {
+      s.appendChild(svg("line", { x1: m.l, x2: W - m.r, y1: y(t), y2: y(t), stroke: t === 0 ? css("--axis") : css("--grid"), "stroke-width": 1 }));
+      var tx = svg("text", { x: m.l - 8, y: y(t) + 4, "text-anchor": "end" }); tx.textContent = tick(t); s.appendChild(tx);
+    });
+    var lstep = Math.max(1, Math.ceil(values.length / Math.max(2, Math.floor(pw / 80))));
+    var band = pw / values.length, bw = Math.min(24, band * 0.62);
+    values.forEach(function (v, i) {
+      var x = m.l + i * band + (band - bw) / 2, top = y(Math.max(v, 0)), bot = y(Math.min(v, 0)), h = Math.max(1, bot - top), r = Math.min(4, h);
+      var path = v >= 0
+        ? "M" + x + "," + bot + "V" + (top + r) + "Q" + x + "," + top + " " + (x + r) + "," + top + "H" + (x + bw - r) + "Q" + (x + bw) + "," + top + " " + (x + bw) + "," + (top + r) + "V" + bot + "Z"
+        : "M" + x + "," + top + "V" + (bot - r) + "Q" + x + "," + bot + " " + (x + r) + "," + bot + "H" + (x + bw - r) + "Q" + (x + bw) + "," + bot + " " + (x + bw) + "," + (bot - r) + "V" + top + "Z";
+      s.appendChild(svg("path", { d: path, fill: v >= 0 ? css("--s1") : css("--neg") }));
+      if ((values.length - 1 - i) % lstep === 0) { var tx = svg("text", { x: m.l + i * band + band / 2, y: H - 12, "text-anchor": "middle" }); tx.textContent = labels[i]; s.appendChild(tx); }
+    });
+    var pl = plan.map(function (p, i) { return p == null ? null : [m.l + i * band + band / 2, y(p)]; }).filter(Boolean);
+    s.appendChild(svg("polyline", { points: pl.map(function (p) { return p.join(","); }).join(" "), fill: "none", stroke: css("--ink-2"), "stroke-width": 2, "stroke-linejoin": "round" }));
+    var lastI = values.length - 1, lt = svg("text", { x: m.l + lastI * band + band / 2, y: y(Math.max(values[lastI], 0)) - 8, "text-anchor": "middle", class: "lbl-strong" });
+    lt.textContent = money(values[lastI], true); s.appendChild(lt);
+    var cross = svg("line", { y1: m.t, y2: m.t + ph, stroke: css("--axis"), "stroke-width": 1, opacity: 0 }); s.appendChild(cross);
+    var hit = svg("rect", { x: m.l, y: m.t, width: pw, height: ph, fill: "transparent" }); s.appendChild(hit);
+    host.appendChild(s);
+    var tip = tipFor(host);
+    function at(evt) {
+      var r = s.getBoundingClientRect(), px = (evt.clientX - r.left) / r.width * W, i = Math.max(0, Math.min(values.length - 1, Math.floor((px - m.l) / band)));
+      var cx = m.l + i * band + band / 2; cross.setAttribute("x1", cx); cross.setAttribute("x2", cx); cross.setAttribute("opacity", 1);
+      var hr = host.getBoundingClientRect();
+      tip.show([{ text: money(values[i], true), key: values[i] >= 0 ? css("--s1") : css("--neg") }, { text: labels[i] },
+        { text: "Plan " + money(plan[i]), key: css("--ink-2") }], (cx / W) * r.width + (r.left - hr.left), evt.clientY - hr.top);
+    }
+    hit.addEventListener("pointermove", at); hit.addEventListener("pointerleave", function () { tip.hide(); cross.setAttribute("opacity", 0); });
+  }
+
+  function waterfall(id, steps) {
+    var host = document.getElementById(id); host.textContent = ""; host.classList.add("chart");
+    var W = Math.max(320, Math.round(host.clientWidth || 520)), H = 280, m = { l: 56, r: 10, t: 22, b: 40 }, pw = W - m.l - m.r, ph = H - m.t - m.b;
+    var run = 0, bars = steps.map(function (s) {
+      if (s.kind === "total") { run = s.value; return { lo: 0, hi: s.value, s: s }; }
+      var lo = Math.min(run, run + s.value), hi = Math.max(run, run + s.value); run += s.value; return { lo: lo, hi: hi, s: s };
+    });
+    var mx = Math.max.apply(null, bars.map(function (b) { return b.hi; })), ticks = niceTicks(0, mx, 4), y1 = ticks[ticks.length - 1];
+    var y = function (v) { return m.t + ph - v / y1 * ph; };
+    var s = svg("svg", { viewBox: "0 0 " + W + " " + H, role: "img", "aria-label": "AUM bridge year to date" });
+    ticks.forEach(function (t) { s.appendChild(svg("line", { x1: m.l, x2: W - m.r, y1: y(t), y2: y(t), stroke: t === 0 ? css("--axis") : css("--grid") }));
+      var tx = svg("text", { x: m.l - 8, y: y(t) + 4, "text-anchor": "end" }); tx.textContent = tick(t); s.appendChild(tx); });
+    var band = pw / bars.length, bw = Math.min(56, band * 0.6), tip = tipFor(host);
+    bars.forEach(function (b, i) {
+      var x = m.l + i * band + (band - bw) / 2, col = b.s.kind === "total" ? css("--ink-2") : (b.s.kind === "up" ? css("--s1") : css("--neg"));
+      var r = svg("rect", { x: x, y: y(b.hi), width: bw, height: Math.max(1, y(b.lo) - y(b.hi)), rx: 3, fill: col, tabindex: 0 });
+      s.appendChild(r);
+      var v = svg("text", { x: x + bw / 2, y: y(b.hi) - 6, "text-anchor": "middle", class: "lbl-strong" });
+      v.textContent = b.s.kind === "total" ? money(b.s.value) : money(b.s.value, true); s.appendChild(v);
+      var lb = svg("text", { x: x + bw / 2, y: H - 22, "text-anchor": "middle", class: "lbl" }); lb.textContent = b.s.step; s.appendChild(lb);
+      if (i < bars.length - 1) { var nxt = b.s.kind === "total" ? b.hi : (b.s.value >= 0 ? b.hi : b.lo);
+        s.appendChild(svg("line", { x1: x + bw, x2: x + band, y1: y(nxt), y2: y(nxt), stroke: css("--axis") })); }
+      function show(e) { var hr = host.getBoundingClientRect(); tip.show([{ text: money(b.s.value, b.s.kind !== "total"), key: col }, { text: b.s.step }], e.clientX - hr.left, e.clientY - hr.top); }
+      r.addEventListener("pointermove", show); r.addEventListener("pointerleave", tip.hide);
+    });
+    host.appendChild(s);
+  }
+
+  function barH(id, items, opts) {
+    opts = opts || {};
+    var host = document.getElementById(id); host.textContent = ""; host.classList.add("chart");
+    var W = Math.max(320, Math.round(host.clientWidth || 560)), rowH = 34, m = { l: Math.min(opts.left || 190, Math.round(W * 0.45)), r: 70, t: 6, b: 22 }, H = m.t + m.b + rowH * items.length, pw = W - m.l - m.r;
+    var vals = items.map(function (d) { return d.value; }), mn = Math.min(0, Math.min.apply(null, vals)), mx = Math.max(0, Math.max.apply(null, vals));
+    var ticks = niceTicks(mn, mx, 4), x0 = ticks[0], x1 = ticks[ticks.length - 1], x = function (v) { return m.l + (v - x0) / (x1 - x0) * pw; };
+    var s = svg("svg", { viewBox: "0 0 " + W + " " + H, role: "img", "aria-label": opts.label || "bar chart" }), tip = tipFor(host);
+    ticks.forEach(function (t) { s.appendChild(svg("line", { x1: x(t), x2: x(t), y1: m.t, y2: H - m.b, stroke: t === 0 ? css("--axis") : css("--grid") }));
+      var tx = svg("text", { x: x(t), y: H - 6, "text-anchor": "middle" }); tx.textContent = tick(t); s.appendChild(tx); });
+    var maxChars = Math.max(8, Math.floor((m.l - 14) / 6.3));
+    items.forEach(function (d, i) {
+      var yc = m.t + i * rowH + rowH / 2, bh = Math.min(20, rowH * 0.6), a = x(Math.min(0, d.value)), b = x(Math.max(0, d.value));
+      var col = d.color || (d.value >= 0 ? css("--s1") : css("--neg"));
+      var w = Math.max(1, b - a), r = Math.min(4, w), yy = yc - bh / 2, path;
+      if (d.value >= 0) path = "M" + a + "," + yy + "H" + (b - r) + "Q" + b + "," + yy + " " + b + "," + (yy + r) + "V" + (yy + bh - r) + "Q" + b + "," + (yy + bh) + " " + (b - r) + "," + (yy + bh) + "H" + a + "Z";
+      else path = "M" + b + "," + yy + "H" + (a + r) + "Q" + a + "," + yy + " " + a + "," + (yy + r) + "V" + (yy + bh - r) + "Q" + a + "," + (yy + bh) + " " + (a + r) + "," + (yy + bh) + "H" + b + "Z";
+      var p = svg("path", { d: path, fill: col, tabindex: 0 }); s.appendChild(p);
+      var lb = svg("text", { x: m.l - 10, y: yc + 4, "text-anchor": "end", class: d.strong ? "lbl-strong" : "lbl" });
+      lb.textContent = d.label.length > maxChars ? d.label.slice(0, maxChars - 1) + "…" : d.label; s.appendChild(lb);
+      if (d.label.length > maxChars) { var tt = svg("title", {}); tt.textContent = d.label; lb.appendChild(tt); }
+      var vt = svg("text", { x: d.value >= 0 ? b + 6 : x(0) + 6, y: yc + 4, "text-anchor": "start", class: "lbl-strong" });
+      vt.textContent = money(d.value, opts.signed); s.appendChild(vt);
+      function show(e) { var hr = host.getBoundingClientRect(); tip.show([{ text: money(d.value, opts.signed), key: col }, { text: d.label }].concat(d.extra || []), e.clientX - hr.left, e.clientY - hr.top); }
+      p.addEventListener("pointermove", show); p.addEventListener("pointerleave", tip.hide);
+    });
+    host.appendChild(s);
+  }
+
+  function lineChart(id, labels, values, opts) {
+    opts = opts || {};
+    var host = document.getElementById(id); host.textContent = ""; host.classList.add("chart");
+    var W = Math.max(320, Math.round(host.clientWidth || 560)), H = 240, m = { l: 48, r: 14, t: 14, b: 30 }, pw = W - m.l - m.r, ph = H - m.t - m.b;
+    var mx = Math.max.apply(null, values.concat([opts.threshold || 0])), ticks = niceTicks(0, mx, 4), y1 = ticks[ticks.length - 1];
+    var y = function (v) { return m.t + ph - v / y1 * ph; }, x = function (i) { return m.l + i * pw / (values.length - 1); };
+    var s = svg("svg", { viewBox: "0 0 " + W + " " + H, role: "img", "aria-label": opts.label || "line chart" });
+    ticks.forEach(function (t) { s.appendChild(svg("line", { x1: m.l, x2: W - m.r, y1: y(t), y2: y(t), stroke: t === 0 ? css("--axis") : css("--grid") }));
+      var tx = svg("text", { x: m.l - 8, y: y(t) + 4, "text-anchor": "end" }); tx.textContent = pct(t, 0); s.appendChild(tx); });
+    if (opts.threshold != null) {
+      s.appendChild(svg("line", { x1: m.l, x2: W - m.r, y1: y(opts.threshold), y2: y(opts.threshold), stroke: css("--ink-2"), "stroke-width": 1 }));
+      var tl = svg("text", { x: W - m.r, y: y(opts.threshold) - 5, "text-anchor": "end", class: "lbl" }); tl.textContent = "Threshold " + pct(opts.threshold, 0); s.appendChild(tl);
+    }
+    s.appendChild(svg("polyline", { points: values.map(function (v, i) { return x(i) + "," + y(v); }).join(" "), fill: "none", stroke: css("--s1"), "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }));
+    var peak = values.indexOf(Math.max.apply(null, values));
+    s.appendChild(svg("circle", { cx: x(peak), cy: y(values[peak]), r: 4, fill: css("--s1"), stroke: css("--surface"), "stroke-width": 2 }));
+    var pk = svg("text", { x: x(peak) - 8, y: y(values[peak]) + 4, "text-anchor": "end", class: "lbl-strong" }); pk.textContent = labels[peak] + "  " + pct(values[peak]); s.appendChild(pk);
+    var lstep = Math.max(1, Math.ceil(labels.length / Math.max(2, Math.floor(pw / 90))));
+    labels.forEach(function (l, i) { if ((labels.length - 1 - i) % lstep === 0) { var tx = svg("text", { x: x(i), y: H - 10, "text-anchor": "middle" }); tx.textContent = l; s.appendChild(tx); } });
+    var dot = svg("circle", { r: 4, fill: css("--s1"), stroke: css("--surface"), "stroke-width": 2, opacity: 0 }); s.appendChild(dot);
+    var cross = svg("line", { y1: m.t, y2: m.t + ph, stroke: css("--axis"), opacity: 0 }); s.appendChild(cross);
+    var hit = svg("rect", { x: m.l, y: m.t, width: pw, height: ph, fill: "transparent" }); s.appendChild(hit);
+    host.appendChild(s);
+    var tip = tipFor(host);
+    hit.addEventListener("pointermove", function (e) {
+      var r = s.getBoundingClientRect(), px = (e.clientX - r.left) / r.width * W, i = Math.max(0, Math.min(values.length - 1, Math.round((px - m.l) / (pw / (values.length - 1)))));
+      dot.setAttribute("cx", x(i)); dot.setAttribute("cy", y(values[i])); dot.setAttribute("opacity", 1);
+      cross.setAttribute("x1", x(i)); cross.setAttribute("x2", x(i)); cross.setAttribute("opacity", 1);
+      var hr = host.getBoundingClientRect(); tip.show([{ text: pct(values[i]), key: css("--s1") }, { text: labels[i] }], x(i) / W * r.width + (r.left - hr.left), e.clientY - hr.top);
+    });
+    hit.addEventListener("pointerleave", function () { tip.hide(); dot.setAttribute("opacity", 0); cross.setAttribute("opacity", 0); });
+  }
+
+  // OKLab interpolation for the diverging heatmap scale
+  function hex2rgb(h) { h = h.replace("#", ""); return [0, 2, 4].map(function (i) { return parseInt(h.substr(i, 2), 16) / 255; }); }
+  function lin(c) { return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); }
+  function unlin(c) { return c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1 / 2.4) - 0.055; }
+  function toLab(h) { var c = hex2rgb(h).map(lin), l = 0.4122214708 * c[0] + 0.5363325363 * c[1] + 0.0514459929 * c[2],
+      m = 0.2119034982 * c[0] + 0.6806995451 * c[1] + 0.1073969566 * c[2], s = 0.0883024619 * c[0] + 0.2817188376 * c[1] + 0.6299787005 * c[2];
+    l = Math.cbrt(l); m = Math.cbrt(m); s = Math.cbrt(s);
+    return [0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s, 1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s, 0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s]; }
+  function fromLab(L) { var l = L[0] + 0.3963377774 * L[1] + 0.2158037573 * L[2], m = L[0] - 0.1055613458 * L[1] - 0.0638541728 * L[2], s = L[0] - 0.0894841775 * L[1] - 1.2914855480 * L[2];
+    l = l * l * l; m = m * m * m; s = s * s * s;
+    var r = [4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s, -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s, -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s];
+    return "#" + r.map(function (c) { var v = Math.round(Math.max(0, Math.min(1, unlin(c))) * 255); return (v < 16 ? "0" : "") + v.toString(16); }).join(""); }
+  function mix(a, b, t) { var A = toLab(a), B = toLab(b); return fromLab([A[0] + (B[0] - A[0]) * t, A[1] + (B[1] - A[1]) * t, A[2] + (B[2] - A[2]) * t]); }
+
+  function heatmap(id, hm) {
+    var host = document.getElementById(id); host.textContent = "";
+    var all = []; hm.rows.forEach(function (r) { all = all.concat(r.values); });
+    var lim = Math.max.apply(null, all.map(Math.abs)) || 1, mid = css("--div-mid"), pos = css("--s1"), neg = css("--neg");
+    var t = el("table", { class: "heat" }), thead = el("thead"), hr = el("tr"); hr.appendChild(el("th", null, "Territory"));
+    hm.months.forEach(function (m) { hr.appendChild(el("th", { class: "num" }, m.slice(0, 3) + " " + m.slice(-2))); });
+    hr.appendChild(el("th", { class: "num" }, "12 months")); thead.appendChild(hr); t.appendChild(thead);
+    var tb = el("tbody");
+    hm.rows.forEach(function (r) {
+      var tr = el("tr"); tr.appendChild(el("td", { class: "name" }, r.territory)); var tot = 0;
+      r.values.forEach(function (v, i) {
+        tot += v; var k = Math.min(1, Math.abs(v) / lim), bg = mix(mid, v >= 0 ? pos : neg, Math.pow(k, 0.7));
+        var td = el("td", { title: r.territory + ", " + hm.months[i] + ": " + money(v, true) }, money(v, true).replace("$", ""));
+        td.style.background = bg; td.style.color = Math.pow(k, 0.7) > 0.55 ? "#ffffff" : css("--ink"); tr.appendChild(td);
+      });
+      tr.appendChild(el("td", { class: "num" }, money(tot, true))); tb.appendChild(tr);
+    });
+    t.appendChild(tb); host.appendChild(t);
+    var sc = el("div", { class: "scale" }), bar = el("span", { class: "bar" });
+    bar.style.background = "linear-gradient(90deg," + neg + "," + mid + "," + pos + ")";
+    sc.appendChild(el("span", null, "Outflow " + money(-lim))); sc.appendChild(bar); sc.appendChild(el("span", null, "Inflow " + money(lim)));
+    host.appendChild(sc);
+  }
+
+  // tiny, safe markdown for the briefs (escapes first, then formats)
+  function md(text) {
+    function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+    function inline(s) { return esc(s).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\*(.+?)\*/g, "<em>$1</em>"); }
+    var out = [], inList = false;
+    text.split("\n").forEach(function (line) {
+      if (/^- /.test(line)) { if (!inList) { out.push("<ul>"); inList = true; } out.push("<li>" + inline(line.slice(2)) + "</li>"); return; }
+      if (inList) { out.push("</ul>"); inList = false; }
+      if (/^### /.test(line)) out.push("<h3>" + inline(line.slice(4)) + "</h3>");
+      else if (/^---\s*$/.test(line)) out.push("<hr>");
+      else if (line.trim()) out.push("<p>" + inline(line) + "</p>");
+    });
+    if (inList) out.push("</ul>");
+    return out.join("");
+  }
+
+  // ------------------------------------------------------------ render
+  var drawn = {};
+  function render() {
+    document.getElementById("meta").textContent = D.firm + " (fictional) · data as of " + D.as_of_label + " · synthetic data";
+    document.getElementById("foot").textContent = "Generated by the FlowSight pipeline.";
+    // tiles
+    var tiles = document.getElementById("tiles"); tiles.textContent = "";
+    var card = {}; D.scorecard.forEach(function (k) { card[k.kpi_id] = k; });
+    [["net_flows", "Net flows, " + D.as_of_label, true], ["organic_growth_rate", "Organic growth (ann.)"], ["gross_sales", "Gross sales"],
+     ["redemption_rate", "Redemption rate (ann.)"], ["ending_aum", "Assets under management"]].forEach(function (t) {
+      var k = card[t[0]]; if (!k) return;
+      var c = el("div", { class: "card tile " + (t[2] ? "hero c4" : "c2") });
+      c.appendChild(el("div", { class: "label" }, t[1]));
+      c.appendChild(el("div", { class: "value" }, fmt(k.value, k.unit, t[0] === "net_flows")));
+      var st = el("div", { class: "status" }); st.appendChild(chip(k.rag));
+      if (k.target != null) st.appendChild(el("span", { class: "small muted" }, "target " + fmt(k.target, k.unit)));
+      c.appendChild(st);
+      if (k.mom_change != null) c.appendChild(el("div", { class: "delta" }, fmt(k.mom_change, k.unit, true) + " vs prior month"));
+      c.appendChild(sparkline(k.trend_13m || [], t[2] ? 300 : 160, 30));
+      tiles.appendChild(c);
+    });
+    var cm = document.getElementById("commentary"); cm.textContent = "";
+    D.commentary.forEach(function (b) { cm.appendChild(el("li", null, b)); });
+    document.getElementById("commentary-sub").textContent = "Auto-generated from the KPI layer (" + (D.commentary_provider === "template" ? "offline template" : D.commentary_provider) + "), numbers checked by guardrails";
+    var mon = D.monthly.slice(-13);
+    columnChart("chart-netflows", mon.map(function (m) { return m.month; }), mon.map(function (m) { return m.net_flows; }), mon.map(function (m) { return m.plan_net_flows; }));
+    waterfall("chart-bridge", D.bridge_ytd);
+    var sc = document.getElementById("scorecard"); sc.textContent = "";
+    sc.appendChild(makeTable([
+      { label: "KPI", render: function (k) { return k.month_key !== D.as_of ? k.name + " (" + k.month + ")" : k.name; } },
+      { label: "Value", num: true, render: function (k) { return fmt(k.value, k.unit); } },
+      { label: "Target", num: true, render: function (k) { return k.target == null ? "–" : fmt(k.target, k.unit); } },
+      { label: "Status", render: function (k) { return chip(k.rag); } },
+      { label: "vs prior", num: true, render: function (k) { return k.mom_change == null ? "" : fmt(k.mom_change, k.unit, true); } },
+      { label: "Owner", render: function (k) { return k.owner; } }], D.scorecard));
+    if (!drawn.tables) {
+      withTable("chart-netflows", [{ label: "Month", render: function (m) { return m.month; } }, { label: "Net flows", num: true, render: function (m) { return money(m.net_flows, true); } },
+        { label: "Plan", num: true, render: function (m) { return money(m.plan_net_flows); } }, { label: "Gross", num: true, render: function (m) { return money(m.gross_sales); } },
+        { label: "Redemptions", num: true, render: function (m) { return money(m.redemptions); } }], mon);
+      withTable("chart-bridge", [{ label: "Step", render: function (s) { return s.step; } }, { label: "Amount", num: true, render: function (s) { return money(s.value, s.kind !== "total"); } }], D.bridge_ytd);
+    }
+    // products
+    barH("chart-families", D.families.map(function (f) { return { label: f.family, value: f.net_flows_ytd,
+      extra: [{ text: "Gross " + money(f.gross_sales) + " · redemptions " + money(f.redemptions) }] }; }), { signed: true, left: 230, label: "Net flows by family" });
+    heatmap("heatmap", D.heatmap);
+    barH("chart-channels", D.channels.map(function (c) { return { label: c.channel, value: c.net_flows,
+      extra: [{ text: "Gross " + money(c.gross_sales) }] }; }), { signed: true, left: 150, label: "Net flows by channel" });
+    if (!drawn.tables) withTable("chart-channels", [{ label: "Channel", render: function (c) { return c.channel; } },
+      { label: "Net flows YTD", num: true, render: function (c) { return money(c.net_flows, true); } },
+      { label: "Gross sales YTD", num: true, render: function (c) { return money(c.gross_sales); } }], D.channels);
+    var fu = document.getElementById("funds"); fu.textContent = "";
+    fu.appendChild(makeTable([
+      { label: "Fund", render: function (f) { return f.fund; }, sort: function (f) { return f.fund; } },
+      { label: "Family", render: function (f) { return f.family; }, sort: function (f) { return f.family; } },
+      { label: "Vehicle", render: function (f) { return f.vehicle; } },
+      { label: "AUM", num: true, render: function (f) { return money(f.aum); }, sort: function (f) { return f.aum; } },
+      { label: "Net flows 12m", num: true, render: function (f) { return money(f.net_flows_12m, true); }, sort: function (f) { return f.net_flows_12m; } },
+      { label: "Organic growth 12m", num: true, render: function (f) { return pct(f.organic_growth_12m, 1, true); }, sort: function (f) { return f.organic_growth_12m; } },
+      { label: "Excess return 3m", num: true, render: function (f) { return pct(f.excess_3m, 1, true); }, sort: function (f) { return f.excess_3m; } }], D.funds, { sortable: true }));
+    // team
+    document.getElementById("team-sub").textContent = D.quarter + " to date. Externals are credited with sales in their territory and channel group; internals with the whole territory. Click a column to sort.";
+    var tm = document.getElementById("team"); tm.textContent = "";
+    tm.appendChild(makeTable([
+      { label: "Wholesaler", render: function (w) { return w.wholesaler_name; }, sort: function (w) { return w.wholesaler_name; } },
+      { label: "Role", render: function (w) { return w.role; }, sort: function (w) { return w.role; } },
+      { label: "Territory", render: function (w) { return w.territory; }, sort: function (w) { return w.territory; } },
+      { label: "Group", render: function (w) { return w.channel_group; } },
+      { label: "Meetings", num: true, render: function (w) { return num(w.meetings); }, sort: function (w) { return w.meetings; } },
+      { label: "Calls", num: true, render: function (w) { return num(w.calls); }, sort: function (w) { return w.calls; } },
+      { label: "Credited gross", num: true, render: function (w) { return money(w.credited_gross); }, sort: function (w) { return w.credited_gross; } },
+      { label: "Goal", num: true, render: function (w) { return money(w.goal); }, sort: function (w) { return w.goal; } },
+      { label: "Attainment", render: function (w) { var d = el("div"), a = w.attainment || 0;
+          var row = el("div", { style: "display:flex;gap:8px;align-items:center" }), mt = el("div", { class: "meter", title: "Goal mark at 100%" }), b = el("b"), u = el("u");
+          b.style.width = Math.min(100, a / 1.5 * 100) + "%"; b.style.background = a >= 1 ? css("--s1") : (a >= 0.9 ? css("--warn") : css("--neg"));
+          mt.appendChild(b); mt.appendChild(u); row.appendChild(mt); row.appendChild(el("span", { class: "small" }, pct(a, 0))); d.appendChild(row); return d; },
+        sort: function (w) { return w.attainment || 0; } },
+      { label: "Conversion", num: true, render: function (w) { return pct(w.conversion, 0); }, sort: function (w) { return w.conversion || 0; } }], D.wholesalers, { sortable: true }));
+    // next best action
+    var pol = D.policy.filter(function (p) { return p.policy.indexOf("Random") !== 0; });
+    var flow = D.policy.filter(function (p) { return p.policy.indexOf("FlowSight") === 0; })[0];
+    document.getElementById("policy-sub").textContent = "Simulated A/B test, " + flow.meetings + " meetings across " + flow.wholesalers +
+      " external wholesalers. A meeting's value is the true causal effect from the simulator, which real data never reveals; a pilot with randomised call lists replaces it.";
+    barH("chart-policy", pol.map(function (p) { return { label: p.policy.replace(" (uplift x ticket)", ""), value: p.incremental_gross_sales,
+      color: p.policy.indexOf("FlowSight") === 0 ? css("--s1") : css("--deemph"), strong: p.policy.indexOf("FlowSight") === 0,
+      extra: [{ text: pct(p.vs_rule, 0, true) + " vs largest-books rule" }, { text: pct(p.share_of_oracle, 0) + " of the oracle" }] }; }), { left: 290, label: "Incremental gross sales by call-list policy" });
+    if (!drawn.tables) withTable("chart-policy", [{ label: "Policy", render: function (p) { return p.policy; } }, { label: "Meetings", num: true, render: function (p) { return num(p.meetings); } },
+      { label: "Incremental gross", num: true, render: function (p) { return money(p.incremental_gross_sales); } }, { label: "vs rule", num: true, render: function (p) { return pct(p.vs_rule, 0, true); } },
+      { label: "Share of oracle", num: true, render: function (p) { return pct(p.share_of_oracle, 0); } }], D.policy);
+    var ef = document.getElementById("effect"); ef.textContent = "";
+    var nm = { intercept: "Typical meeting", past_conversion_rate: "Per +1.0 past meeting-to-sale rate", holds_family: "Already holds the family",
+      bought_last_2m: "Bought it in the last 2 months", digital_last_month: "Digital interest last month", log_book: "Per +1 log book size", tier_a: "Tier-A book" };
+    ef.appendChild(makeTable([{ label: "Meeting effect term", render: function (e) { return nm[e.term] || e.term; } },
+      { label: "Odds x", num: true, render: function (e) { return num(e.odds_multiplier, 2); } }], D.ml.meeting_effect));
+    var nb = D.ml.nba;
+    ef.appendChild(el("p", { class: "note" }, "Purchase model: AUC " + num(nb.auc_gbm, 3) + " on the backtest month vs " + num(nb.auc_heuristic, 3) +
+      " for a 'big books that own it' heuristic; top-decile lift " + num(nb.top_decile_lift_gbm, 1) + "x. The meeting effect is a logistic layer on top of a gradient-boosted no-meeting baseline."));
+    var wsel = document.getElementById("wsel");
+    if (!wsel.options.length) {
+      var ws = {}; D.recommendations.forEach(function (r) { ws[r.wholesaler_id] = r.wholesaler_name; });
+      Object.keys(ws).sort().forEach(function (k) { var o = el("option", { value: k }, ws[k] + " (" + k + ")"); wsel.appendChild(o); });
+      wsel.addEventListener("change", drawCalls);
+    }
+    drawCalls();
+    // retention
+    var at = D.ml.attrition, am = document.getElementById("att-metrics"); am.textContent = "";
+    [["Backtest AUC", num(at.auc_gbm, 2)], ["Rule-based AUC", num(at.auc_rule, 2)], ["Top-decile lift", num(at.top_decile_lift, 1) + "x"],
+     ["AUC within largest 25% of books", num(at.auc_within_top_quartile_aum, 2)], ["Next-quarter redemption $ in top decile", pct(at.top_decile_redemption_capture, 0)]].forEach(function (p) {
+      am.appendChild(el("span", { class: "muted" }, p[0])); am.appendChild(el("b", null, p[1])); });
+    document.getElementById("watch-sub").textContent = "Top " + D.watchlist.length + " by AUM at risk, " + D.as_of_label;
+    var wl = document.getElementById("watch"); wl.textContent = "";
+    wl.appendChild(makeTable([
+      { label: "Advisor", render: function (r) { return r.advisor_name; } }, { label: "Firm", render: function (r) { return r.firm_name; } },
+      { label: "Wholesaler", render: function (r) { return r.wholesaler_name || "–"; } },
+      { label: "Assets", num: true, render: function (r) { return money(r.aum); }, sort: function (r) { return r.aum; } },
+      { label: "Risk", num: true, render: function (r) { return pct(r.risk_score, 0); }, sort: function (r) { return r.risk_score; } },
+      { label: "At risk", num: true, render: function (r) { return money(r.aum_at_risk); }, sort: function (r) { return r.aum_at_risk; } },
+      { label: "Why", render: function (r) { return r.reasons.split(" | ").join("; "); } }], D.watchlist, { sortable: true }));
+    // data health
+    lineChart("chart-unattr", D.unattributed.map(function (u) { return u.month; }), D.unattributed.map(function (u) { return u.value; }), { threshold: 0.03, label: "Unattributed sales share by month" });
+    if (!drawn.tables) { withTable("chart-unattr", [{ label: "Month", render: function (u) { return u.month; } }, { label: "Unattributed", num: true, render: function (u) { return pct(u.value); } }], D.unattributed); }
+    var al = document.getElementById("alerts"); al.textContent = "";
+    al.appendChild(makeTable([{ label: "Month", render: function (a) { return a.month; } }, { label: "KPI", render: function (a) { return a.kpi_name + (a.dim !== "ALL" ? " · " + a.dim : ""); } },
+      { label: "Value", num: true, render: function (a) { return a.kpi_id.indexOf("dq_") === 0 || a.kpi_id.indexOf("rate") >= 0 ? pct(a.value) : (a.kpi_id.indexOf("flows") >= 0 ? money(a.value, true) : num(a.value)); } },
+      { label: "z", num: true, render: function (a) { return num(a.robust_z, 1); } },
+      { label: "", render: function (a) { return chip(a.direction === "adverse" ? "ADVERSE" : "FAVOURABLE"); } }], D.alerts));
+    var dq = document.getElementById("dq"); dq.textContent = "";
+    dq.appendChild(makeTable([{ label: "Check", render: function (c) { return c.check_name.replace(/_/g, " "); } }, { label: "Severity", render: function (c) { return c.severity; } },
+      { label: "Failing rows", num: true, render: function (c) { return num(c.failing_rows); } }, { label: "Status", render: function (c) { return chip(c.status); } },
+      { label: "Rule", render: function (c) { return c.description; } }], D.dq));
+    if (!drawn.tables) withTable("chart-families", [{ label: "Family", render: function (f) { return f.family; } },
+      { label: "Net flows YTD", num: true, render: function (f) { return money(f.net_flows_ytd, true); } },
+      { label: "Gross", num: true, render: function (f) { return money(f.gross_sales); } },
+      { label: "Redemptions", num: true, render: function (f) { return money(f.redemptions); } }], D.families);
+    drawn.tables = true;
+  }
+
+  function drawCalls() {
+    var id = document.getElementById("wsel").value, rows = D.recommendations.filter(function (r) { return r.wholesaler_id === id; });
+    document.getElementById("wsel-note").textContent = rows.length + " recommendations \u00b7 scored on " + D.as_of_label + " data \u00b7 click a row for the brief";
+    var host = document.getElementById("calllist"); host.textContent = "";
+    var brief = document.getElementById("brief");
+    function show(r, tr) {
+      host.querySelectorAll("tr.selected").forEach(function (x) { x.classList.remove("selected"); }); if (tr) tr.classList.add("selected");
+      if (r.brief) { brief.innerHTML = md(r.brief); }
+      else { brief.textContent = ""; brief.appendChild(el("h3", null, r.advisor_name + " - " + r.firm_name));
+        brief.appendChild(el("p", { class: "muted" }, "Briefs are generated for each wholesaler's top two. Why this one:"));
+        var ul = el("ul"); r.reasons.split(" | ").forEach(function (x) { ul.appendChild(el("li", null, x)); }); brief.appendChild(ul); }
+    }
+    host.appendChild(makeTable([
+      { label: "#", num: true, render: function (r) { return r.rank; } }, { label: "Advisor", render: function (r) { return r.advisor_name; } },
+      { label: "Firm", render: function (r) { return r.firm_name; } }, { label: "Family", render: function (r) { return r.family_name; } },
+      { label: "P(buy) no / with mtg", num: true, render: function (r) { return pct(r.p_if_not_met, 0) + " → " + pct(r.p_if_met, 0); } },
+      { label: "Expected extra", num: true, render: function (r) { return money(r.exp_value); } }], rows, { onClick: show }));
+    if (rows.length) { show(rows[0], host.querySelector("tbody tr")); }
+  }
+
+  // ------------------------------------------------------------ tabs + theme
+  var ready = false;
+  var tabs = document.getElementById("tabs");
+  var sections = Array.prototype.slice.call(document.querySelectorAll("section.tab"));
+  function select(id) {
+    sections.forEach(function (s) { s.classList.toggle("active", s.id === id); });
+    tabs.querySelectorAll("button").forEach(function (b) { b.setAttribute("aria-selected", b.dataset.tab === id ? "true" : "false"); });
+    try { localStorage.setItem("flowsight-tab", id); } catch (e) {}
+    if (ready) render();
+  }
+  sections.forEach(function (s) { var b = el("button", { role: "tab", type: "button" }, s.dataset.title); b.dataset.tab = s.id;
+    b.addEventListener("click", function () { select(s.id); }); tabs.appendChild(b); });
+  var start = "tab-overview"; try { start = localStorage.getItem("flowsight-tab") || start; } catch (e) {}
+  if (!document.getElementById(start)) start = "tab-overview";
+  var hash = (location.hash || "").replace("#", ""); if (hash && document.getElementById("tab-" + hash)) start = "tab-" + hash;
+  select(start);
+  window.addEventListener("hashchange", function () { var h = (location.hash || "").replace("#", "");
+    if (h && document.getElementById("tab-" + h)) select("tab-" + h); });
+  document.getElementById("themeBtn").addEventListener("click", function () {
+    var cur = document.documentElement.getAttribute("data-theme") || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    document.documentElement.setAttribute("data-theme", cur === "dark" ? "light" : "dark");
+    try { localStorage.setItem("flowsight-theme", document.documentElement.getAttribute("data-theme")); } catch (e) {}
+    render();
+  });
+  try { var th = localStorage.getItem("flowsight-theme"); if (th) document.documentElement.setAttribute("data-theme", th); } catch (e) {}
+  ready = true;
+  render();
+  var rt = null;
+  window.addEventListener("resize", function () { clearTimeout(rt); rt = setTimeout(render, 150); });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+[project]
+name = "flowsight"
+version = "1.0.0"
+description = "Distribution intelligence for an asset manager: PySpark/SQL pipeline, KPI framework, next-best-action ML and GenAI call-prep briefs"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+filterwarnings = ["ignore::UserWarning"]

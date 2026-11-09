@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Generated data and outputs (rebuild with: python -m flowsight run)
+data/
+outputs/
+spark-warehouse/
+metastore_db/
+derby.log
+
+# Secrets / IDE / OS
+.env
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

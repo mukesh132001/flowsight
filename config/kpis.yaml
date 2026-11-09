@@ -1,0 +1,384 @@
+# FlowSight KPI semantic layer.
+# One definition per KPI: business meaning, owner, SQL (runs unchanged on SQLite and Spark),
+# target and RAG rule. docs/kpi-dictionary.md is generated from this file.
+#
+# SQL must return month_key and value; optional columns: dim (for drill-down KPIs) and
+# target (when the target is computed from data, e.g. a share of beginning AUM).
+#
+# target:  {fixed: x} | {prior_year_growth: g} | {baseline_growth: g} | {sql: true}
+# rag:     {mode: ratio, green: 1.0, amber: 0.9}   value/target (target/value when direction is down)
+#          {mode: absolute, green: x, amber: y}    compares the value itself
+# Tiers in the metric tree: north_star -> driver -> input -> health
+
+kpis:
+  # ---------------------------------------------------------------- growth
+  - id: organic_growth_rate
+    name: Organic growth rate (annualised)
+    tier: north_star
+    category: Growth
+    unit: pct
+    direction: up
+    owner: Head of Distribution
+    definition: Net flows as a share of beginning AUM, annualised. Separates growth we earned from growth the market gave us.
+    formula: 12 x SUM(net flows) / SUM(beginning AUM)
+    sql: |
+      SELECT month_key, SUM(net_flows) * 12 / NULLIF(SUM(beginning_aum), 0) AS value
+      FROM mart_product_month GROUP BY month_key
+    target: {fixed: 0.04}
+    rag: {mode: absolute, green: 0.04, amber: 0.0}
+
+  - id: net_flows
+    name: Net flows
+    tier: driver
+    category: Growth
+    unit: usd
+    direction: up
+    owner: Head of Distribution
+    definition: Gross sales minus redemptions across all funds, from transfer-agent totals (book of record).
+    formula: SUM(gross sales) - SUM(redemptions)
+    sql: |
+      SELECT month_key, SUM(net_flows) AS value, SUM(beginning_aum) * 0.04 / 12 AS target
+      FROM mart_product_month GROUP BY month_key
+    target: {sql: true}
+    target_note: Plan = 4% annual organic growth on beginning AUM
+    rag: {mode: ratio, green: 1.0, amber: 0.5}
+
+  - id: gross_sales
+    name: Gross sales
+    tier: driver
+    category: Growth
+    unit: usd
+    direction: up
+    owner: Head of Distribution
+    definition: New money into our funds (all channels incl. institutional mandates).
+    formula: SUM(gross sales)
+    sql: |
+      SELECT month_key, SUM(gross_sales) AS value FROM mart_product_month GROUP BY month_key
+    target: {prior_year_growth: 0.05}
+    rag: {mode: ratio, green: 1.0, amber: 0.9}
+
+  - id: redemption_rate
+    name: Redemption rate (annualised)
+    tier: driver
+    category: Growth
+    unit: pct
+    direction: down
+    owner: Head of Distribution
+    definition: Redemptions as a share of beginning AUM, annualised. The retention side of organic growth.
+    formula: 12 x SUM(redemptions) / SUM(beginning AUM)
+    sql: |
+      SELECT month_key, SUM(redemptions) * 12 / NULLIF(SUM(beginning_aum), 0) AS value
+      FROM mart_product_month GROUP BY month_key
+    target: {fixed: 0.28}
+    rag: {mode: absolute, green: 0.28, amber: 0.33}
+
+  - id: ending_aum
+    name: Assets under management
+    tier: driver
+    category: Growth
+    unit: usd
+    direction: up
+    owner: Head of Distribution
+    definition: Month-end AUM across all funds (transfer agent).
+    formula: SUM(ending AUM)
+    sql: |
+      SELECT month_key, SUM(ending_aum) AS value FROM mart_product_month GROUP BY month_key
+
+  - id: revenue_run_rate
+    name: Management-fee run rate
+    tier: driver
+    category: Growth
+    unit: usd
+    direction: up
+    owner: Head of Distribution
+    definition: Annual management fees implied by month-end AUM and each fund's fee.
+    formula: SUM(ending AUM x fee bps / 10,000)
+    sql: |
+      SELECT month_key, SUM(revenue_run_rate) AS value FROM mart_product_month GROUP BY month_key
+    target: {prior_year_growth: 0.05}
+    rag: {mode: ratio, green: 1.0, amber: 0.95}
+
+  - id: market_share
+    name: Share of category gross sales
+    tier: driver
+    category: Growth
+    unit: pct
+    direction: up
+    owner: Distribution Strategy & Analytics
+    definition: Our gross sales divided by industry gross sales in the categories where we have a fund.
+    formula: SUM(our gross sales) / SUM(industry gross sales)
+    sql: |
+      SELECT month_key, SUM(our_gross_sales) / NULLIF(SUM(industry_gross_sales), 0) AS value
+      FROM mart_market_share GROUP BY month_key
+    target: {baseline_growth: 0.05}
+    rag: {mode: ratio, green: 1.0, amber: 0.9}
+
+  # ---------------------------------------------------------------- sales productivity
+  - id: sales_per_external
+    name: Gross sales per external wholesaler
+    tier: input
+    category: Productivity
+    unit: usd
+    direction: up
+    owner: Regional Sales Directors
+    definition: Intermediary gross sales credited to external wholesalers' territories, per wholesaler in seat. Target = sum of quarterly goals / 3.
+    formula: SUM(credited gross sales) / COUNT(external wholesalers in seat)
+    sql: |
+      SELECT month_key,
+             SUM(credited_gross_sales) / COUNT(DISTINCT wholesaler_id) AS value,
+             SUM(monthly_goal) / COUNT(DISTINCT wholesaler_id) AS target
+      FROM mart_wholesaler_month WHERE role = 'External' GROUP BY month_key
+    target: {sql: true}
+    rag: {mode: ratio, green: 1.0, amber: 0.9}
+
+  - id: meetings_per_external
+    name: Meetings per external wholesaler
+    tier: input
+    category: Productivity
+    unit: count
+    direction: up
+    owner: Regional Sales Directors
+    definition: Completed in-person + virtual meetings per external wholesaler in seat.
+    formula: SUM(meetings) / COUNT(external wholesalers in seat)
+    sql: |
+      SELECT month_key,
+             CAST(SUM(in_person_meetings + virtual_meetings) AS DOUBLE) / COUNT(DISTINCT wholesaler_id) AS value
+      FROM mart_wholesaler_month WHERE role = 'External' GROUP BY month_key
+    target: {fixed: 35}
+    rag: {mode: ratio, green: 1.0, amber: 0.85}
+
+  - id: external_seats_filled
+    name: External wholesaler seats filled
+    tier: input
+    category: Productivity
+    unit: count
+    direction: up
+    owner: Head of Distribution
+    definition: External wholesalers in seat (plan = 16 seats, two per territory). A vacant seat leaves a territory's advisors uncovered.
+    formula: COUNT(external wholesalers in seat)
+    sql: |
+      SELECT month_key, CAST(COUNT(DISTINCT wholesaler_id) AS DOUBLE) AS value
+      FROM mart_wholesaler_month WHERE role = 'External' GROUP BY month_key
+    target: {fixed: 16}
+    rag: {mode: ratio, green: 1.0, amber: 0.9}
+
+  - id: meeting_conversion
+    name: Meeting-to-sale conversion
+    tier: input
+    category: Productivity
+    unit: pct
+    direction: up
+    owner: Regional Sales Directors
+    definition: Share of meetings where the advisor bought the product family discussed within the meeting month or the next two. The last two months are left out until their window closes.
+    formula: meetings followed by a purchase of the family / meetings
+    sql: |
+      SELECT month_key, AVG(CAST(converted_3m AS DOUBLE)) AS value
+      FROM mart_activity_conversion
+      WHERE activity_type IN ('In-Person Meeting', 'Virtual Meeting')
+        AND month_index <= (SELECT MAX(month_index) - 2 FROM dim_month)
+      GROUP BY month_key
+    target: {baseline_growth: 0.05}
+    rag: {mode: ratio, green: 1.0, amber: 0.9}
+
+  - id: tier_a_coverage
+    name: Tier-A advisor coverage (90 days)
+    tier: input
+    category: Productivity
+    unit: pct
+    direction: up
+    owner: Regional Sales Directors
+    definition: Share of tier-A advisors (top 15% by book) who had an external-wholesaler meeting in the last three months.
+    formula: tier-A advisors met in trailing 3 months / tier-A advisors
+    sql: |
+      SELECT month_key,
+             AVG(CASE WHEN external_meetings_3m > 0 THEN CAST(1 AS DOUBLE) ELSE CAST(0 AS DOUBLE) END) AS value
+      FROM mart_advisor_month WHERE tier = 'A' AND month_index >= 3 GROUP BY month_key
+    target: {fixed: 0.8}
+    rag: {mode: absolute, green: 0.8, amber: 0.7}
+
+  # ---------------------------------------------------------------- client breadth
+  - id: producing_advisors
+    name: Producing advisors
+    tier: input
+    category: Client breadth
+    unit: count
+    direction: up
+    owner: Distribution Strategy & Analytics
+    definition: Advisors with at least one purchase in the month (attributed trades).
+    formula: COUNT(advisors with gross sales > 0)
+    sql: |
+      SELECT month_key, CAST(COUNT(*) AS DOUBLE) AS value
+      FROM mart_advisor_month WHERE gross_sales > 0 GROUP BY month_key
+    target: {prior_year_growth: 0.03}
+    rag: {mode: ratio, green: 1.0, amber: 0.9}
+
+  - id: new_producing_advisors
+    name: New & reactivated producers
+    tier: input
+    category: Client breadth
+    unit: count
+    direction: up
+    owner: Distribution Strategy & Analytics
+    definition: Advisors who bought this month after no purchase in the previous 12 months (new or won back). Starts in month 13 so every advisor has a full year of history.
+    formula: COUNT(advisors buying with zero purchase months in the prior 12)
+    sql: |
+      SELECT month_key, CAST(COUNT(*) AS DOUBLE) AS value
+      FROM mart_advisor_month
+      WHERE gross_sales > 0 AND COALESCE(purchase_months_prior_12m, 0) = 0 AND month_index >= 13
+      GROUP BY month_key
+    target: {baseline_growth: 0.05}
+    rag: {mode: ratio, green: 1.0, amber: 0.85}
+
+  - id: cross_sell_depth
+    name: Product families per advisor
+    tier: input
+    category: Client breadth
+    unit: ratio
+    direction: up
+    owner: Distribution Strategy & Analytics
+    definition: Average number of product families held by advisors who hold any of our funds.
+    formula: AVG(families held | AUM > 0)
+    sql: |
+      SELECT month_key, AVG(CAST(families_held AS DOUBLE)) AS value
+      FROM mart_advisor_month WHERE aum > 0 GROUP BY month_key
+    target: {baseline_growth: 0.03}
+    rag: {mode: ratio, green: 1.0, amber: 0.97}
+
+  # ---------------------------------------------------------------- institutional
+  - id: inst_weighted_pipeline
+    name: Institutional weighted pipeline
+    tier: input
+    category: Institutional
+    unit: usd
+    direction: up
+    owner: Head of Institutional Sales
+    definition: Open RFP opportunities weighted by stage probability (Identified 10%, RFP 25%, Finalist 50%).
+    formula: SUM(open mandate size x stage probability)
+    sql: |
+      SELECT month_key,
+             SUM(CASE WHEN is_open = 1 THEN mandate_size_usd * stage_probability ELSE 0 END) AS value
+      FROM mart_inst_pipeline GROUP BY month_key
+
+  - id: inst_win_rate_12m
+    name: Institutional win rate (12 months)
+    tier: input
+    category: Institutional
+    unit: pct
+    direction: up
+    owner: Head of Institutional Sales
+    definition: Wins as a share of decided opportunities (won + lost at any stage) over the trailing 12 months.
+    formula: wins / (wins + losses), trailing 12 months
+    sql: |
+      SELECT month_key, value FROM (
+          SELECT month_key, month_index,
+                 CAST(SUM(wins) OVER w AS DOUBLE) / NULLIF(SUM(decided) OVER w, 0) AS value
+          FROM (
+              SELECT m.month_key, m.month_index,
+                     COALESCE(SUM(p.won_this_month), 0) AS wins,
+                     COALESCE(SUM(p.decided_this_month), 0) AS decided
+              FROM dim_month m
+              LEFT JOIN mart_inst_pipeline p ON m.month_key = p.month_key
+              GROUP BY m.month_key, m.month_index
+          ) d
+          WINDOW w AS (ORDER BY month_index ROWS BETWEEN 11 PRECEDING AND CURRENT ROW)
+      ) x
+      WHERE month_index >= 12
+    target: {fixed: 0.25}
+    rag: {mode: absolute, green: 0.25, amber: 0.18}
+
+  # ---------------------------------------------------------------- data health
+  - id: dq_unattributed_sales
+    name: Unattributed sales (rep code not mapped)
+    tier: health
+    category: Data quality
+    unit: pct
+    direction: down
+    owner: Sales Operations / Data Governance
+    definition: Share of intermediary gross sales whose rep code is missing from the crosswalk. Unattributed sales cannot be credited to a wholesaler or used for targeting.
+    formula: unmapped gross sales / reported gross sales
+    sql: |
+      SELECT month_key,
+             SUM(CASE WHEN is_mapped = 0 THEN gross_sales ELSE 0 END) / NULLIF(SUM(gross_sales), 0) AS value
+      FROM fct_trades GROUP BY month_key
+    target: {fixed: 0.02}
+    rag: {mode: absolute, green: 0.02, amber: 0.03}
+
+  - id: dq_attribution_coverage
+    name: Feed coverage vs transfer agent
+    tier: health
+    category: Data quality
+    unit: pct
+    direction: up
+    owner: Sales Operations / Data Governance
+    definition: Intermediary gross sales seen in the vendor feeds as a share of the transfer agent's intermediary total. The gap is omnibus / retirement-plan flow with no rep detail.
+    formula: feed gross sales / TA intermediary gross sales
+    sql: |
+      SELECT month_key, SUM(feed_gross) / NULLIF(SUM(intermediary_gross), 0) AS value
+      FROM mart_product_month GROUP BY month_key
+    target: {fixed: 0.85}
+    rag: {mode: absolute, green: 0.85, amber: 0.8}
+
+  - id: dq_late_trades
+    name: Late-reported trades (vendor A)
+    tier: health
+    category: Data quality
+    unit: pct
+    direction: down
+    owner: Sales Operations / Data Governance
+    definition: Share of vendor A trades reported after the month they were placed (they restate last month's numbers).
+    formula: trades with report month > trade month / trades
+    sql: |
+      SELECT month_key, AVG(CAST(is_late AS DOUBLE)) AS value
+      FROM fct_trades WHERE source_vendor = 'A' GROUP BY month_key
+    target: {fixed: 0.06}
+    rag: {mode: absolute, green: 0.06, amber: 0.08}
+
+  - id: dq_crm_duplicates
+    name: CRM duplicate sync rate
+    tier: health
+    category: Data quality
+    unit: pct
+    direction: down
+    owner: Sales Operations / Data Governance
+    definition: Share of raw CRM activity rows that were duplicate syncs of an activity already received.
+    formula: (raw rows - distinct activities) / raw rows
+    sql: |
+      SELECT s.month_key,
+             CAST(COUNT(*) - COUNT(DISTINCT r.activity_id) AS DOUBLE) / COUNT(*) AS value
+      FROM raw_crm_activities r
+      JOIN stg_activities s ON r.activity_id = s.activity_id
+      GROUP BY s.month_key
+    target: {fixed: 0.03}
+    rag: {mode: absolute, green: 0.03, amber: 0.05}
+
+  # ---------------------------------------------------------------- drill-down series (anomaly watch)
+  - id: external_meetings_by_territory
+    name: External meetings by territory
+    tier: input
+    category: Productivity
+    unit: count
+    direction: up
+    owner: Regional Sales Directors
+    definition: Completed external-wholesaler meetings by territory. Watched for coverage gaps (vacant seats, leave).
+    formula: COUNT(completed external meetings) by territory
+    sql: |
+      SELECT a.month_key, w.territory_code AS dim, CAST(COUNT(*) AS DOUBLE) AS value
+      FROM stg_activities a
+      JOIN stg_wholesalers w ON a.wholesaler_id = w.wholesaler_id
+      WHERE a.is_completed = 1 AND a.is_meeting = 1 AND w.role = 'External'
+      GROUP BY a.month_key, w.territory_code
+    drilldown: true
+
+  - id: net_flows_by_family
+    name: Net flows by product family
+    tier: driver
+    category: Growth
+    unit: usd
+    direction: up
+    owner: Product Management
+    definition: Transfer-agent net flows by product family.
+    formula: SUM(net flows) by family
+    sql: |
+      SELECT month_key, family_name AS dim, SUM(net_flows) AS value
+      FROM mart_product_month GROUP BY month_key, family_name
+    drilldown: true

@@ -1,0 +1,24 @@
+# GitLab CI mirror of the GitHub Actions pipeline.
+stages:
+  - test
+
+python-tests:
+  stage: test
+  image: python:3.12-slim
+  script:
+    - pip install -r requirements.txt
+    - pytest -v --junitxml=report.xml
+  artifacts:
+    when: always
+    reports:
+      junit: report.xml
+
+spark-parity:
+  stage: test
+  image: python:3.11-slim
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends openjdk-17-jre-headless
+  script:
+    - pip install -r requirements-spark.txt
+    - PYTHONPATH=src python -m flowsight generate --scale small
+    - PYTHONPATH=src python -m flowsight parity --scale small

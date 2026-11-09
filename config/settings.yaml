@@ -1,0 +1,29 @@
+# FlowSight run settings. Paths are relative to the repo root.
+seed: 42
+scale: full                # full = 3,000 advisors / 118 firms; small = 500 / 28 (tests, CI)
+start_month: "2024-01"
+end_month: "2026-10"       # as-of month = latest complete month
+eval_month: "2026-08"      # month used for the simulated A/B test of call-list policies
+
+paths:
+  raw: data/raw
+  ground_truth: data/ground_truth   # simulator's hidden truth: only used to *evaluate* policies
+  warehouse: data/warehouse         # SQLite file or Spark parquet output
+  outputs: outputs
+  samples: samples                  # small committed copies of the outputs for GitHub readers
+
+engine: sqlite             # sqlite | spark
+
+ml:
+  train_from: "2024-07"    # first feature month used for training (needs 6 months of history)
+  train_to: "2026-04"      # last feature month whose 2-month label window ends before backtest
+  backtest_month: "2026-07"
+  scoring_month: "2026-10"
+  calls_per_wholesaler: 38 # monthly meeting capacity used in the policy simulation
+  recommendations_per_wholesaler: 25
+
+ai:
+  provider: auto           # auto = Anthropic if ANTHROPIC_API_KEY is set, else offline templates
+  model_env: ANTHROPIC_MODEL
+  default_model: claude-sonnet-5-5
+  max_briefs: 40

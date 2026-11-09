@@ -1,0 +1,6 @@
+# PySpark engine for local runs and the CI parity job (Java 17 required).
+pyspark==3.5.3
+numpy<2
+pandas>=2.1,<2.3
+pyyaml>=6.0
+pyarrow>=14,<17

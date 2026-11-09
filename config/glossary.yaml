@@ -1,0 +1,159 @@
+# Column glossary used to generate docs/data-dictionary.md.
+# `python -m flowsight docs` lists any model column missing here, and a test fails on it,
+# so documentation cannot fall behind the SQL.
+columns:
+  activity_date: Date of the CRM activity (ISO yyyy-mm-dd), parsed from either source date format.
+  activity_id: CRM activity identifier.
+  activity_type: Standardised activity type - In-Person Meeting, Virtual Meeting, Call or Email.
+  activity_type_raw: Activity type exactly as typed in the CRM (14 spellings), kept for audit.
+  advisor_key: Golden identifier of a financial advisor (from the advisor master).
+  advisor_name: Advisor's full name.
+  advisors_touched: Distinct advisors with a completed meeting or call in the month.
+  approved_month_key: Month the fund was approved on the firm's platform (null = not approved).
+  asset_class: Equity, Fixed Income or Multi-Asset.
+  aum: Assets with us (sum of month-end positions), in USD.
+  aum_3m_ago: Assets with us three months earlier.
+  beginning_aum: AUM at the start of the month (= previous month's ending AUM).
+  book_aum_est: Advisor's total book of business from the data vendor (all managers), USD.
+  branch_state: US state of the advisor's branch office.
+  calls: Completed phone calls.
+  calls_3m: Completed calls about this product family over the last 3 months.
+  cancelled: CRM activities logged as cancelled.
+  cancelled_3m: Cancelled activities with this advisor over the last 3 months.
+  cancelled_activities: Cancelled CRM activities with this advisor in the month.
+  category: Fund category used for peer comparison and market share (e.g. Large Blend).
+  category_avg_return: Average monthly total return of the fund's category.
+  channel: Intermediary channel - Wirehouse, Regional BD, Bank/Trust, Independent BD or RIA.
+  channel_group: Coverage group - WH (wirehouse, regional, bank) or IR (independent and RIA); ALL / INST for internal and institutional teams.
+  client_name: Institutional prospect or client (fictional).
+  client_type: Public Pension, Corporate DB, Endowment/Foundation or Insurance.
+  contacts_3m: Completed meetings + calls with the advisor over the last 3 months.
+  contacts_6m: Completed meetings + calls with the advisor over the last 6 months.
+  converted_3m: 1 if the advisor bought the family discussed in the activity month or the next two.
+  created_month_key: Month the opportunity was opened.
+  credited_gross_sales: Gross sales credited to the wholesaler (territory + channel group for externals, territory for internals).
+  credited_redemptions: Redemptions in the wholesaler's credited book.
+  crm_contact_id: CRM contact id of the advisor (missing = advisor not in the CRM).
+  data_vendor: Which sales-reporting feed covers the firm (A or B).
+  decided_this_month: 1 if the opportunity was won or lost in this month.
+  digital_1m: Digital engagement events about the family this month (factsheets + webinars + e-mail clicks).
+  digital_3m: Digital engagement events about the family over the last 3 months.
+  email: Wholesaler's e-mail address (lower-cased).
+  email_hash: Hashed advisor e-mail used to match marketing-automation events.
+  emails: Marketing / follow-up e-mails sent.
+  end_month_key: Last month the row is valid (999912 = still valid).
+  ending_aum: AUM at month end (transfer agent).
+  event_date: Date of the digital engagement event.
+  event_id: Marketing-automation event identifier.
+  event_type: factsheet_download, webinar_attended, email_click or site_visit.
+  excess_return: Fund return minus category average return for the month.
+  external_meetings: Completed meetings with an external wholesaler in the month.
+  external_meetings_3m: Completed external-wholesaler meetings over the last 3 months.
+  factsheets_1m: Factsheet downloads for the family this month.
+  fam_aum: Advisor's assets with us in this product family.
+  fam_excess_3m: Sum of the family's average excess return over the last 3 months.
+  families_held: Number of product families in which the advisor holds assets with us.
+  family_code: Product family code (CEQ, GIE, EIO, CFI, SDC, CMU, MAS).
+  family_name: Product family name, the level wholesalers pitch at.
+  feed_gross: Gross sales reported by the intermediary feeds (mapped + unmapped rep codes).
+  feed_redemptions: Redemptions reported by the intermediary feeds.
+  firm_id: Distribution partner (broker-dealer, RIA or bank) identifier.
+  firm_name: Distribution partner name (fictional).
+  firm_name_key: Upper-cased, trimmed firm name used to match vendor B rows.
+  first_purchase_index: month_index of the advisor's first purchase in the data window.
+  fund_name: Fund name.
+  goal_gross_sales_usd: Quarterly gross-sales goal for the wholesaler.
+  gross_12m: Purchases of the family over the last 12 months.
+  gross_1m: Purchases of the family this month.
+  gross_3m: Purchases over the last 3 months.
+  gross_sales: New money invested (purchases), USD.
+  gross_sales_3m: Purchases of the discussed family in the activity month or the next two.
+  held_excess_3m: Asset-weighted 3-month excess return of the funds the advisor holds.
+  held_family_flow_rate: Asset-weighted 3-month net-flow rate of the families the advisor holds (momentum).
+  holds_family: 1 if the advisor holds any fund in this family.
+  hq_state: Firm headquarters state.
+  in_person_meetings: Completed in-person meetings.
+  industry_gross_sales: Industry-wide gross sales in the category (market-share denominator).
+  industry_tenure_years: Advisor's years in the industry.
+  inst_gross_sales: Gross sales from institutional mandates (not visible in intermediary feeds).
+  inst_redemptions: Redemptions from institutional mandates.
+  intermediary_gross: Transfer-agent gross sales excluding institutional mandates.
+  is_completed: 1 if the CRM activity was completed (not cancelled).
+  is_known_contact: 1 if the web event matched an advisor in the master file.
+  is_late: 1 if the trade was reported in a later month than it was placed.
+  is_mapped: 1 if the trade's rep code mapped to an advisor for the trade month.
+  is_meeting: 1 for in-person or virtual meetings.
+  is_open: 1 while the opportunity is still in Identified, RFP Issued or Finalist.
+  last_contact_index: month_index of the most recent completed meeting or call.
+  launch_month_key: Month the fund launched (null = before the data window).
+  mandate_size_usd: Expected institutional mandate size.
+  mapped_gross: Feed gross sales whose rep code mapped to an advisor.
+  market_effect: Ending AUM - beginning AUM - net flows (market movement and FX).
+  market_share: Our gross sales / industry gross sales in the category.
+  market_value: Month-end market value of the position.
+  meetings: Completed in-person + virtual meetings.
+  meetings_12m: Meetings about the family over the last 12 months.
+  mgmt_fee_bps: Management fee in basis points per year.
+  month_index: Sequential month number (0 = December 2023, the opening-balance month).
+  month_key: Month as an integer yyyymm.
+  monthly_goal: Quarterly goal / 3.
+  months_since_buy: Months since the advisor last bought the family (null = never in window).
+  months_since_contact: Months since the last completed meeting or call with the advisor.
+  months_since_touch: Months since the family was last discussed with the advisor.
+  moved_recently: 1 in the six months after an advisor started under a new rep code (changed firms).
+  n_holdings: Number of fund positions the advisor holds with us.
+  net_flows: Gross sales minus redemptions.
+  opp_id: Institutional opportunity identifier.
+  our_gross_sales: Our transfer-agent gross sales in the category.
+  owner_id: Institutional relationship manager (wholesaler_id).
+  practice_focus: Advisor's practice focus (e.g. Retirement Income, Tax-Aware).
+  prior_aum: Assets with us at the previous month end.
+  producing_advisors: Distinct advisors with a purchase.
+  product_code: Fund identifier (e.g. AP-CB).
+  purchase_months_prior_12m: Months with a purchase in the 12 months before this one.
+  quarter_label: Calendar quarter, e.g. 2026Q4.
+  red_12m: Redemptions over the last 12 months.
+  red_3m: Redemptions over the last 3 months.
+  redemptions: Money withdrawn (redemptions), USD.
+  region: East, South, Central or West.
+  rep_code: Broker-dealer representative code (how intermediaries identify an advisor in trade feeds).
+  report_date: Date the vendor reported the trade.
+  report_month_key: Month the trade was reported, yyyymm.
+  revenue_run_rate: Ending AUM x management fee - annual fee revenue at the current asset level.
+  role: External, Internal or Institutional.
+  share_class: A, C, I (mutual funds) or ETF.
+  share_class_code: Share-class code as sent by vendor B (e.g. AP-LCC-I).
+  shelf_products: Funds in the family on the advisor's firm platform that month.
+  small_holdings: Positions under $50K (prone to clean-up liquidations).
+  source_vendor: Sales-reporting feed the trade came from (A or B).
+  stage: Identified, RFP Issued, Finalist, Won, Lost or Withdrawn.
+  stage_month_key: Month the opportunity entered the stage.
+  stage_order: 1 Identified, 2 RFP Issued, 3 Finalist, 4 decided.
+  stage_probability: Win probability used for the weighted pipeline (10% / 25% / 50% / 100%).
+  start_month_key: First month the row is valid.
+  state: US state code.
+  t_meet_next1: Meetings about the family next month - the treatment used to estimate meeting effects (never a feature).
+  t_touch_next1: Weighted touches about the family next month (never a feature).
+  territory_code: Sales territory (NE, NYM, MA, SE, MW, SC, MT, PC).
+  territory_name: Sales territory name.
+  tier: Advisor segment by book size - A (top 15%), B (next 35%), C (rest).
+  total_return: Fund's total return for the month.
+  touch_1m: Weighted touches about the family this month (meeting 1.0, virtual 0.75, call 0.45, e-mail 0.08).
+  touch_3m: Weighted touches about the family over the last 3 months.
+  touch_weight: Weight of the activity type in touch scores.
+  trade_date: Date the trade was placed.
+  trade_id: Unique trade identifier (vendor prefix + vendor reference).
+  vehicle: MF (mutual fund) or ETF.
+  virtual_meetings: Completed virtual meetings.
+  was_corrected: 1 if a cancel-and-rebill correction touched the trade.
+  web_3m: Digital engagement events over the last 3 months.
+  web_events: Digital engagement events in the month.
+  web_prev3m: Digital engagement events in the 3 months before that.
+  webinars_1m: Webinars about the family attended this month.
+  wholesaler_id: Wholesaler identifier.
+  wholesaler_name: Wholesaler's name (fictional).
+  wholesaler_role: Role of the wholesaler who logged the activity.
+  won_this_month: 1 if the opportunity was won in this month.
+  y_buy_next2: Label - 1 if the advisor bought the family in the next 2 months (never a feature).
+  y_gross_next2: Label - purchases of the family in the next 2 months (never a feature).
+  y_red_next3: Label - redemptions in the next 3 months (never a feature).
